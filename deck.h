@@ -118,6 +118,10 @@ public:
         return remainingCardCount;
     }
 
+    bool isEmpty() {
+        return remainingCardCount==0;
+    }
+
     void new_deck() {
         create_deck();
         shuffle_deck();
