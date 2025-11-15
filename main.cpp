@@ -1,22 +1,128 @@
 #include <iostream>
 #include "deck.h"
 #include <stack>
+#include <unordered_map>
+#include <vector>
+#include <set>
 using namespace std;
 
-void display_hand(const vector<Card>& hand, const string& playerName) {
-    cout << '\n' << playerName << "'s hand:\n";
+void display_hand(const vector<Card>& hand) {
+    cout << '[';
     for (Card c: hand) {
         cout << " " << c;
     }
+    cout << ']';
     cout << '\n';
 }
 
-void take_turn(Deck& deck, vector<Card>& hand, const string& playerName, stack<Card>& discardPile) {
+vector<vector<Card>> find_sets(const vector<Card>& hand) {
+    vector<vector<Card>> sets;
+    
+    // Map: rank -> vector of cards with that rank
+    unordered_map<uint8, vector<Card>> rankMap;
+    
+    // Populate the map
+    for (const Card& c : hand) {
+        rankMap[c.rank].push_back(c);
+    }
+
+    for (auto& [rank, cards] : rankMap) {
+        if (cards.size() >= 3) {
+            // verify different suits
+            set<uint8> suits;
+            for (const Card& c : cards) {
+                suits.insert(c.suit);
+            }
+            
+            // we must have at least 3 different suits for it to be a set
+            // otherwise we don't care
+            if (suits.size() >= 3) {
+                // get the cards with different suits
+                vector<Card> validSet;
+                set<uint8> usedSuits;
+                
+                for (const Card& c : cards) {
+                    if (usedSuits.find(c.suit) == usedSuits.end()) {
+                        validSet.push_back(c);
+                        usedSuits.insert(c.suit);
+                    }
+                }
+                
+                if (validSet.size() >= 3) {
+                    sets.push_back(validSet);
+                }
+            }
+        }
+    }
+
+    // display each set to terminal
+    cout << "Sets:";
+    for (auto& cardSet: sets) {
+        display_hand(cardSet);
+    }
+
+    return sets;
+}
+
+vector<vector<Card>> find_runs(const vector<Card>& hand) {
+    vector<vector<Card>> runs;
+    
+    // map with key: suit, value: cards of that suit
+    unordered_map<uint8, vector<Card>> suitMap;
+    
+    // add all cards to relevant place in map
+    for (const Card& c : hand) {
+        suitMap[c.suit].push_back(c);
+    }
+    
+    // for each suit, find consecutive runs
+    for (auto& [suit, cards] : suitMap) {
+        // we need at least 3 cards for a run
+        if (cards.size() >= 3) {
+            // sort cards by rank + find consecutive sequences
+            sort(cards.begin(), cards.end());
+            
+            vector<Card> currentRun = {cards[0]};
+            
+            for (size_t i = 1; i < cards.size(); i++) {
+                // compare current card's rank to the most-recently added one
+                if (cards[i].rank == currentRun.back().rank + 1) {
+                    // we have a consecutive card - add it to the run
+                    currentRun.push_back(cards[i]);
+                } else {
+                    // we found a gap so this is the end of that run
+                    // check if the run is valid
+                    if (currentRun.size() >= 3) {
+                        runs.push_back(currentRun);
+                    }
+                    // start new run
+                    currentRun = {cards[i]};
+                }
+            }
+            
+            // Don't forget to check last run
+            if (currentRun.size() >= 3) {
+                runs.push_back(currentRun);
+            }
+        }   
+    }
+
+    // display each run to terminal
+    cout << "Runs:";
+    for (auto& cardSet: runs) {
+        display_hand(cardSet);
+    }
+    
+    return runs;
+}
+
+void take_turn(Deck& deck, vector<Card>& hand, const string& playerName, stack<Card>& discardPile, vector<vector<Card>>& playerSets, vector<vector<Card>>& playerRuns) {
     
     cout << "Cards remaining in stock: " << deck.remaining() << "\n";
     cout << "Top of discard pile: " << discardPile.top();
     
-    display_hand(hand, playerName);
+    cout << '\n' << playerName << "'s hand:\n";
+    display_hand(hand);
     
     // DRAW PHASE
     cout << "\nChoose an action:\n";
@@ -40,7 +146,11 @@ void take_turn(Deck& deck, vector<Card>& hand, const string& playerName, stack<C
     }
 
     hand.emplace_back(drawn);
-    display_hand(hand, playerName);
+
+    cout << '\n' << playerName << "'s hand:\n";
+    display_hand(hand);
+    playerSets = find_sets(hand);
+    playerRuns = find_runs(hand);
 
     // DISCARD PHASE
     cout << "\nWhich card do you want to discard from 1 to " << hand.size() << "? ";
@@ -66,6 +176,10 @@ int main(int argc, const char * argv[]) {
 
     vector<Card> hand1 = deck.deal_hand(10);
     vector<Card> hand2 = deck.deal_hand(10);
+    vector<vector<Card>> sets1;
+    vector<vector<Card>> sets2;
+    vector<vector<Card>> runs1;
+    vector<vector<Card>> runs2;
 
     stack<Card> discardPile;
     discardPile.push(deck.deal_card()); // discard pile initially starts with one card
@@ -73,7 +187,7 @@ int main(int argc, const char * argv[]) {
     // test with a few turns
     for (int turn = 0; turn < 3; turn++) {
         cout << "\n========== TURN " << turn + 1 << " ==========\n";
-        take_turn(deck, hand1, "Player 1", discardPile);
-        take_turn(deck, hand2, "Player 2", discardPile);
+        take_turn(deck, hand1, "Player 1", discardPile, sets1, runs1);
+        take_turn(deck, hand2, "Player 2", discardPile, sets2, runs2);
     }
 }

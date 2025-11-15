@@ -198,7 +198,8 @@ const std::ostream & operator<<(std::ostream & o, const Card & a)
         rankchar = (unsigned) a.rank+48;
     }
 
-    o<<"\n"<<std::string()<<rankchar<<suitstr[a.suit];
+    // o<<"\n"<<std::string()<<rankchar<<suitstr[a.suit];
+    o<<std::string()<<rankchar<<suitstr[a.suit];
     return o;
    
 }
@@ -207,6 +208,12 @@ const std::ostream & operator<<(std::ostream & o, const Card & a)
 bool operator==(Card a, Card b)
 {
     return a.rank == b.rank && a.suit == b.suit;
+}
+
+// comparator so we can sort a list of cards
+bool operator<(const Card& a, const Card& b) {
+    if (a.suit != b.suit) return a.suit < b.suit;
+    return a.rank < b.rank;
 }
 
 #endif /* deck_h */
