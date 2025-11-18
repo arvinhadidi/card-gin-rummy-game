@@ -116,7 +116,45 @@ vector<vector<Card>> find_runs(const vector<Card>& hand) {
     return runs;
 }
 
-void take_turn(Deck& deck, vector<Card>& hand, const string& playerName, stack<Card>& discardPile, vector<vector<Card>>& playerSets, vector<vector<Card>>& playerRuns) {
+int calculate_deadwood(const vector<Card>& hand, 
+                      const vector<vector<Card>>& sets,
+                      const vector<vector<Card>>& runs) {
+    // collect all cards that are in melds
+    set<pair<uint8, uint8>> melded_cards;  // using (suit, rank) as unique identifier
+    
+    // add all cards from sets
+    for (const auto& meld : sets) {
+        for (const Card& c : meld) {
+            melded_cards.insert({c.suit, c.rank});
+        }
+    }
+    
+    // add all cards from runs
+    for (const auto& meld : runs) {
+        for (const Card& c : meld) {
+            melded_cards.insert({c.suit, c.rank});
+        }
+    }
+    
+    // calculate points for unmelded cards
+    int deadwood = 0;
+    for (const Card& c : hand) {
+        // check if card is NOT in any meld
+        if (melded_cards.find({c.suit, c.rank}) == melded_cards.end()) {
+            if (c.rank == 1) {
+                deadwood += 1;  // ace = 1 point
+            } else if (c.rank >= 10) {
+                deadwood += 10;  // 10, J, Q, K = 10 points
+            } else {
+                deadwood += c.rank;  // 2-9 = face value
+            }
+        }
+    }
+    
+    return deadwood;
+}
+
+void take_turn(Deck& deck, vector<Card>& hand, const string& playerName, stack<Card>& discardPile, vector<vector<Card>>& playerSets, vector<vector<Card>>& playerRuns, bool& knocked) {
     
     cout << "Cards remaining in stock: " << deck.remaining() << "\n";
     cout << "Top of discard pile: " << discardPile.top();
@@ -160,6 +198,27 @@ void take_turn(Deck& deck, vector<Card>& hand, const string& playerName, stack<C
     Card discarded = hand[discardChoice-1];
     hand.erase(hand.begin() + discardChoice-1);
     discardPile.push(discarded);
+
+    // we recalculate deadwood after discarding, to see if we can knock
+    playerSets = find_sets(hand);
+    playerRuns = find_runs(hand);
+    int deadwood = calculate_deadwood(hand, playerSets, playerRuns);
+    cout << "\nYour deadwood: " << deadwood << " points\n";
+
+    if (deadwood == 0) {
+        cout << "\n " << playerName << " has Gin! \n";
+        knocked = true;
+    } else if (deadwood <= 10) {
+        cout << "\n" << playerName << ", you can knock (deadwood = " << deadwood << ")\n";
+        cout << "Do you want to knock? (1=Yes, 2=No): ";
+        int knock_choice;
+        cin >> knock_choice;
+        
+        if (knock_choice == 1) {
+            cout << "\n" << playerName << " knocks!\n";
+            knocked = true;
+        }
+    }
 }
 
 int main(int argc, const char * argv[]) {
@@ -184,10 +243,28 @@ int main(int argc, const char * argv[]) {
     stack<Card> discardPile;
     discardPile.push(deck.deal_card()); // discard pile initially starts with one card
 
-    // test with a few turns
-    for (int turn = 0; turn < 3; turn++) {
-        cout << "\n========== TURN " << turn + 1 << " ==========\n";
-        take_turn(deck, hand1, "Player 1", discardPile, sets1, runs1);
-        take_turn(deck, hand2, "Player 2", discardPile, sets2, runs2);
+    // play until someone knocks or deck runs out
+    bool gameOver = false;
+    int turn = 0;
+
+    while (!gameOver && deck.remaining() > 0) {
+        turn++;
+        cout << "\n========== TURN " << turn << " ==========\n";
+        
+        // player 1's turn
+        take_turn(deck, hand1, "Player 1", discardPile, sets1, runs1, gameOver);
+
+        if (gameOver) {
+            break;
+        }
+        
+        // player 2's turn
+        take_turn(deck, hand2, "Player 2", discardPile, sets2, runs2, gameOver);
     }
+    
+    if (!gameOver) {
+        cout << "\nDeck is empty! Game ends in a draw.\n";
+    }
+    
+    return 0;
 }
