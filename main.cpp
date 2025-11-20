@@ -13,6 +13,7 @@ using namespace std;
 // global flag to control delays (set to false for faster game)
 const bool ENABLE_DELAYS = true;
 const int DELAY_MS = 800;  // milliseconds between messages
+const int HAND_SIZE = 3;
 
 // Custom delayed cout
 void print_delayed(const string& message, bool newline = true) {
@@ -409,8 +410,8 @@ int main(int argc, const char * argv[]) {
         
         // deal hands to each player etc
         Deck deck;
-        vector<Card> p1Hand = deck.deal_hand(10);
-        vector<Card> p2Hand = deck.deal_hand(10);
+        vector<Card> p1Hand = deck.deal_hand(HAND_SIZE);
+        vector<Card> p2Hand = deck.deal_hand(HAND_SIZE);
         vector<vector<Card>> p1Sets, p1Runs;
         vector<vector<Card>> p2Sets, p2Runs;
         

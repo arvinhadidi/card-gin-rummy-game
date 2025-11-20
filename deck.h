@@ -94,7 +94,7 @@ public:
     void delete_deck()
     {
        if (deck.size() > 0) {
-        deck.empty();
+        bool empty = deck.empty();
        }
     }
     
